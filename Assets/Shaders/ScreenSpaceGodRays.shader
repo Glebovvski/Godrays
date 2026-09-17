@@ -2,6 +2,15 @@ Shader "Hidden/ScreenSpaceGodRays"
 {
     Properties
     {
+        _Noise("Noise", 2D) = "white" {}
+        _NoiseStrength("Noise Strength", Range(0, 2)) = 0.4
+        _NoiseThreshold("Noise Threshold", Range(0, 1)) = 0.7
+        _NoiseSoftness("Noise Softness", Range(0.001, 0.5)) = 0.1
+
+        _DustDistance("Dust Distance", Float) = 20.0
+        _NoiseScale("Noise Scale", Float) = 0.5
+        _NoiseSpeed("Noise Speed", Vector) = (0.02, 0.01, 0, 0)
+
         _RayColor("Ray Color", Color) = (1.0, 0.9, 0.65, 1.0)
 
         _Intensity("Intensity", Range(0, 5)) = 1.0
@@ -23,7 +32,7 @@ Shader "Hidden/ScreenSpaceGodRays"
     #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
     #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
 
-    #define GOD_RAY_SAMPLES 100
+    #define GOD_RAY_SAMPLES 120
 
     float4 _SunScreenPosition;
     float _SunVisible;
@@ -31,6 +40,18 @@ Shader "Hidden/ScreenSpaceGodRays"
     TEXTURE2D_X(_GodRaysTexture);
 
     CBUFFER_START(UnityPerMaterial)
+
+    TEXTURE2D(_Noise);
+    SAMPLER(sampler_Noise);
+    float4 _Noise_ST;
+    
+    half _NoiseStrength;
+    half _NoiseThreshold;
+    half _NoiseSoftness;
+
+    float _DustDistance;
+    float _NoiseScale;
+    float4 _NoiseSpeed;
 
     half4 _RayColor;
 
@@ -77,60 +98,79 @@ Shader "Hidden/ScreenSpaceGodRays"
     // LOW RES OCCLUSION MASK -> LOW RES GOD RAYS
     // =========================================================
 
+    float3 GetViewDirectionWS(float2 uv)
+    {
+    #if UNITY_REVERSED_Z
+        float rawDepth = 0.0;
+    #else
+        float rawDepth = 1.0;
+    #endif
+    
+        float3 farPositionWS = ComputeWorldSpacePosition(uv, rawDepth, UNITY_MATRIX_I_VP);
+    
+        return normalize(farPositionWS - _WorldSpaceCameraPos);
+    }
+
+
     half4 GodRaysFragment(Varyings input) : SV_Target
     {
         UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-
+    
         if (_SunVisible < 0.5)
             return 0;
-
+    
         float2 uv = input.texcoord;
         float2 sunUV = _SunScreenPosition.xy;
-
+    
         float2 directionToSun = sunUV - uv;
-
-        // Aspect-correct distance test.
-        float2 aspectDirection =  directionToSun;
-
+    
+        float2 aspectDirection = directionToSun;
         aspectDirection.x *= _ScreenParams.x / _ScreenParams.y;
-
+    
         float distanceToSun = length(aspectDirection);
-
-        // Don't ray march pixels too far away.
+    
         if (distanceToSun > _MaxRayDistance)
             return 0;
-
+    
         float2 stepUV = directionToSun * (_Density / GOD_RAY_SAMPLES);
-
         float2 sampleUV = uv;
-
+    
         half accumulated = 0.0h;
         half illuminationDecay = 1.0h;
-
+    
         [unroll]
         for (int i = 0; i < GOD_RAY_SAMPLES; i++)
         {
             sampleUV += stepUV;
-
-            // Avoid branches inside the loop.
-            float2 lower =  step(float2(0.0, 0.0), sampleUV);
-
+    
+            float2 lower = step(float2(0.0, 0.0), sampleUV);
             float2 upper = step(sampleUV, float2(1.0, 1.0));
-
+    
             half inside = (half)(lower.x * lower.y * upper.x * upper.y);
-
+    
             float2 safeUV = saturate(sampleUV);
-
+    
             half mask = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, safeUV).r;
-
-            accumulated += mask * inside * illuminationDecay * _Weight*_DecaySunAngleKoef;
-            
+    
+            accumulated += mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef;
+    
             illuminationDecay *= _Decay;
         }
-
+    
         half rays = accumulated * _Exposure;
-
-        return half4(rays, rays, rays, 1.0h);
+    
+        float3 viewDirectionWS = GetViewDirectionWS(uv);
+        float3 dustPositionWS = _WorldSpaceCameraPos + viewDirectionWS * _DustDistance;
+        float2 noiseUV = dustPositionWS.xz * _NoiseScale;
+        noiseUV += _Time.y * _NoiseSpeed.xy;
+        half noise = SAMPLE_TEXTURE2D(_Noise, sampler_Noise, noiseUV).r;
+        half dust = smoothstep(_NoiseThreshold, _NoiseThreshold + _NoiseSoftness, noise);
+    
+        dust *= rays * _NoiseStrength;
+    
+        half result = rays + dust;
+    
+        return half4(result, result, result, 1.0h);
     }
 
 
