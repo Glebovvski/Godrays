@@ -33,14 +33,17 @@ Material:
     - _Density: 0.927
     - _DepthSoftness: 0.0146
     - _DepthThreshold: 0.9955
-    - _DustDistance: 2.1
+    - _DustDistance: 67.98
+    - _DustFar: 4.27
+    - _DustNear: 0.02
     - _Exposure: 0.45
     - _Intensity: 0.83
     - _MaxRayDistance: 1.995
-    - _NoiseScale: 14.33
-    - _NoiseSoftness: 0.179
-    - _NoiseStrength: 0.508
-    - _NoiseThreshold: 0.648
+    - _NoiseScale: 106.4
+    - _NoiseSoftness: 0.246
+    - _NoiseStrength: 1.085
+    - _NoiseThreshold: 0.615
+    - _NoiseVisibilityThreshold: 1
     - _Weight: 0.513
     m_Colors:
     - _NoiseSpeed: {r: 0.02, g: 0.05, b: 0, a: 0}
