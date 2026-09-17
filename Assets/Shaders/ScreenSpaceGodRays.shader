@@ -151,24 +151,28 @@ Shader "Hidden/ScreenSpaceGodRays"
             float2 safeUV = saturate(sampleUV);
     
             half mask = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, safeUV).r;
+
+            // _NoiseStrength*=i/100.0;
+            // _NoiseScale=i;
+            // _DustDistance=i;
+
+            float3 viewDirectionWS = GetViewDirectionWS(safeUV);
+            float3 dustPositionWS = _WorldSpaceCameraPos + viewDirectionWS * _DustDistance;
+            float2 noiseUV = dustPositionWS.xz * _NoiseScale;
+            noiseUV += _Time.y * _NoiseSpeed.xy;
+            half noise = SAMPLE_TEXTURE2D(_Noise, sampler_Noise, noiseUV).r;
+            half dust = smoothstep(_NoiseThreshold, _NoiseThreshold + _NoiseSoftness, noise);
+            // dust *= _NoiseStrength;
     
-            accumulated += mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef;
+            accumulated += mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef+dust*_NoiseStrength*mask;
     
             illuminationDecay *= _Decay;
         }
     
         half rays = accumulated * _Exposure;
     
-        float3 viewDirectionWS = GetViewDirectionWS(uv);
-        float3 dustPositionWS = _WorldSpaceCameraPos + viewDirectionWS * _DustDistance;
-        float2 noiseUV = dustPositionWS.xz * _NoiseScale;
-        noiseUV += _Time.y * _NoiseSpeed.xy;
-        half noise = SAMPLE_TEXTURE2D(_Noise, sampler_Noise, noiseUV).r;
-        half dust = smoothstep(_NoiseThreshold, _NoiseThreshold + _NoiseSoftness, noise);
     
-        dust *= rays * _NoiseStrength;
-    
-        half result = rays + dust;
+        half result = rays;
     
         return half4(result, result, result, 1.0h);
     }
