@@ -137,7 +137,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &69238168
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -248,7 +248,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!23 &243842048
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -315,7 +315,7 @@ Transform:
   m_GameObject: {fileID: 243842046}
   serializedVersion: 2
   m_LocalRotation: {x: 1, y: 0, z: 0, w: 0}
-  m_LocalPosition: {x: 4.92058, y: 12.1, z: -15.6122}
+  m_LocalPosition: {x: 4.92058, y: 14.14, z: -15.6122}
   m_LocalScale: {x: 8.12, y: 8.12, z: 8.12}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -550,13 +550,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.24293642, y: -0.0991418, z: 0.11429732, w: 0.9581696}
+  m_LocalRotation: {x: 0.075836904, y: -0.017750159, z: 0.0013502198, w: 0.99696136}
   m_LocalPosition: {x: 22.9, y: 8.2, z: -95.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 29.223, y: -8.863, z: 11.29}
+  m_LocalEulerAnglesHint: {x: 8.7, y: -2.04, z: 0}
 --- !u!114 &410087042
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -599,6 +599,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SunShaderController
   targetCamera: {fileID: 330585545}
+  offscreenPadding: 0.15
+  maxSunAngle: 30
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -666,7 +668,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &1693133653
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -778,7 +780,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!65 &1938133686
 BoxCollider:
   m_ObjectHideFlags: 0

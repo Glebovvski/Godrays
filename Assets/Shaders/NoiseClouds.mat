@@ -51,11 +51,11 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Clip: 0.32
+    - _Clip: 0.44
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _Scale: 0.33
-    - _Speed: 0.05
+    - _Scale: 4.9
+    - _Speed: 0.002
     m_Colors:
     - _Tiling: {r: 1, g: 1, b: 0, a: 0}
   m_BuildTextureStacks: []
