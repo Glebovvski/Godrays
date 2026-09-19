@@ -6,7 +6,7 @@ Shader "Hidden/ScreenSpaceGodRays"
         _NoiseStrength("Noise Strength", Range(0, 2)) = 0.4
         _NoiseThreshold("Noise Threshold", Range(0, 1)) = 0.7
         _NoiseSoftness("Noise Softness", Range(0.001, 0.5)) = 0.1
-        _NoiseVisibilityThreshold("_Noise Visibility Threshold", Range(-1.0,1.0)) = 0.0
+        _NoiseVisibilityThreshold("_Noise Visibility Threshold", Float) = 0.0
 
         _DustDistance("Dust Distance", Float) = 20.0
         _NoiseScale("Noise Scale", Float) = 0.5
@@ -163,25 +163,31 @@ Shader "Hidden/ScreenSpaceGodRays"
 
             float random = Rand(noiseStep);
 
-            
-
             // _NoiseStrength*=i/100.0;
-            float nosieScale = _NoiseScale * random;
             float distance = _DustDistance*random;
-
+            float noiseScale = _NoiseScale * random;
+            
             float3 viewDirectionWS = GetViewDirectionWS(safeUV);
             float3 dustPositionWS = _WorldSpaceCameraPos + viewDirectionWS * distance;
-            float2 noiseUV = dustPositionWS.xz * nosieScale;
-            noiseUV += _Time.y * _NoiseSpeed.xy;
-
+            float2 noiseUV = dustPositionWS.xz * noiseScale;
+            noiseUV += _Time.y * _NoiseSpeed.xy*random;
+            
             float3 cameraForwardWS = normalize(mul((float3x3)UNITY_MATRIX_I_V, float3(0.0, 0.0, -1.0)));
-            float visibleNoise = dot(cameraForwardWS,dustPositionWS - _WorldSpaceCameraPos) >_NoiseVisibilityThreshold;
+            float3 sunDir = normalize(_SunScreenPosition - cameraForwardWS);
+            
+            float3 noiseViewDirectionWS = GetViewDirectionWS(noiseUV);
+
+            // float visibleNoise = length((uv - float2(0.5, 0.5))) < _NoiseVisibilityThreshold;
+            // float visibleNoise = (dustPositionWS.xy - _WorldSpaceCameraPos.xy) < _NoiseVisibilityThreshold;
+            float visibleNoiseTheta = saturate(dot(noiseViewDirectionWS, sunDir));
+            float noiseStrength = _NoiseStrength;// smoothstep(_NoiseStrength, _NoiseStrength + random, visibleNoiseTheta);
+            float visibleNoise = pow(visibleNoiseTheta, _NoiseVisibilityThreshold);
 
             half noise = SAMPLE_TEXTURE2D(_Noise, sampler_Noise, noiseUV).r;
-            half dust = smoothstep(_NoiseThreshold, _NoiseThreshold + _NoiseSoftness, noise)*visibleNoise;
-            // dust *= _NoiseStrength;
+            half dust = smoothstep(_NoiseThreshold, _NoiseThreshold + _NoiseSoftness, noise);
+            dust *= visibleNoise*noiseStrength*mask*(5-_Exposure)*random;
     
-            accumulated += mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef+dust*_NoiseStrength*mask;
+            accumulated += mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef + dust;
     
             illuminationDecay *= _Decay;
         }
