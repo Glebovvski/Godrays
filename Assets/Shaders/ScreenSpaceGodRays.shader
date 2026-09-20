@@ -238,4 +238,6 @@ Shader "Hidden/ScreenSpaceGodRays"
             ENDHLSL
         }
     }
+
+    CustomEditor "ScreenSpaceGodRaysShaderGUI"
 }

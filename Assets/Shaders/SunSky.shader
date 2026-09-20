@@ -79,27 +79,14 @@ Shader "Maid'n'Mate/SunSky"
                 float3 viewDir = normalize(input.viewDir);
                 float3 sunDir = normalize(_SunDirection.xyz);
 
-                // Sky gradient.
                 float gradient = saturate(viewDir.y * 0.5 + 0.5);
-                float3 skyColor = lerp(
-                    _BottomColor.rgb,
-                    _TopColor.rgb,
-                    gradient);
+                float3 skyColor = lerp(_BottomColor.rgb, _TopColor.rgb, gradient);
 
-                // Angular distance from the sun.
                 float sunDistance = 1.0 - saturate(dot(viewDir, sunDir));
 
-                // Solid sun disk.
-                float sun = 1.0 - smoothstep(
-                    _SunSize,
-                    _SunSize + _SunSoftness,
-                    sunDistance);
+                float sun = 1.0 - smoothstep(_SunSize, _SunSize + _SunSoftness, sunDistance);
 
-                // Larger soft glow.
-                float glow = 1.0 - smoothstep(
-                    0.0,
-                    _SunGlowSize,
-                    sunDistance);
+                float glow = 1.0 - smoothstep(0.0, _SunGlowSize, sunDistance);
 
                 float3 color = skyColor;
 
