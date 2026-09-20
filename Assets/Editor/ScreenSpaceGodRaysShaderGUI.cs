@@ -4,6 +4,8 @@ using UnityEngine;
 
 public sealed class ScreenSpaceGodRaysShaderGUI : ShaderGUI
 {
+    private const string DustKeyword = "_DUST_ON";
+
     private static readonly string[] SampleNames = { "8", "12", "30", "60", "100" };
 
     private static readonly string[] SampleKeywords =
@@ -22,6 +24,7 @@ public sealed class ScreenSpaceGodRaysShaderGUI : ShaderGUI
     private static bool depthFoldout;
 
     private MaterialProperty godRaySamples;
+    private MaterialProperty dustEnabled;
 
     private MaterialProperty noise;
     private MaterialProperty noiseStrength;
@@ -53,6 +56,7 @@ public sealed class ScreenSpaceGodRaysShaderGUI : ShaderGUI
     public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] properties)
     {
         FindProperties(properties);
+        SyncKeywords(materialEditor);
 
         EditorGUIUtility.labelWidth = 180f;
 
@@ -77,37 +81,42 @@ public sealed class ScreenSpaceGodRaysShaderGUI : ShaderGUI
             materialEditor.ShaderProperty(maxRayDistance, new GUIContent("Max Ray Distance", "Maximum screen-space distance from the projected sun where rays are evaluated."));
         });
 
-        DrawSection("Dust & Noise", ref dustFoldout, () =>
+        DrawDustToggle(materialEditor);
+
+        if (dustEnabled.floatValue > 0.5f)
         {
-            materialEditor.TexturePropertySingleLine(new GUIContent("Noise Texture", "Noise texture used to generate the dust pattern."), noise);
-            materialEditor.TextureScaleOffsetProperty(noise);
+            DrawSection("Dust & Noise", ref dustFoldout, () =>
+            {
+                materialEditor.TexturePropertySingleLine(new GUIContent("Noise Texture", "Noise texture used to generate the dust pattern."), noise);
+                materialEditor.TextureScaleOffsetProperty(noise);
 
-            Space();
+                Space();
 
-            materialEditor.ShaderProperty(noiseStrength, new GUIContent("Noise Strength", "Global multiplier applied to dust brightness."));
-            materialEditor.ShaderProperty(noiseThreshold, new GUIContent("Particle Threshold", "Higher values make the visible dust more sparse."));
-            materialEditor.ShaderProperty(noiseSoftness, new GUIContent("Particle Softness", "Controls the softness of the thresholded dust pattern."));
+                materialEditor.ShaderProperty(noiseStrength, new GUIContent("Noise Strength", "Global multiplier applied to dust brightness."));
+                materialEditor.ShaderProperty(noiseThreshold, new GUIContent("Particle Threshold", "Higher values make the visible dust more sparse."));
+                materialEditor.ShaderProperty(noiseSoftness, new GUIContent("Particle Softness", "Controls the softness of the thresholded dust pattern."));
 
-            Space();
+                Space();
 
-            materialEditor.ShaderProperty(dustDistance, new GUIContent("Dust Distance", "Maximum virtual world-space distance used when creating dust layers."));
-            materialEditor.ShaderProperty(noiseScale, new GUIContent("Noise Scale", "World-space scale of the dust pattern. Higher values produce smaller features."));
-            materialEditor.ShaderProperty(noiseSpeed, new GUIContent("Noise Speed", "World-space movement direction and speed of the dust."));
-        });
+                materialEditor.ShaderProperty(dustDistance, new GUIContent("Dust Distance", "Maximum virtual world-space distance used when creating dust layers."));
+                materialEditor.ShaderProperty(noiseScale, new GUIContent("Noise Scale", "World-space scale of the dust pattern. Higher values produce smaller features."));
+                materialEditor.ShaderProperty(noiseSpeed, new GUIContent("Noise Speed", "World-space movement direction and speed of the dust."));
+            });
 
-        DrawSection("Dust Lighting Angle", ref dustAngleFoldout, () =>
-        {
-            EditorGUILayout.HelpBox("Controls how strongly dust becomes visible as the camera view direction aligns with the sun direction.", MessageType.None);
+            DrawSection("Dust Lighting Angle", ref dustAngleFoldout, () =>
+            {
+                EditorGUILayout.HelpBox("Controls how strongly dust becomes visible as the camera view direction aligns with the sun direction.", MessageType.None);
 
-            materialEditor.ShaderProperty(dustMinStrength, new GUIContent("Minimum Strength", "Dust brightness when viewed away from the strongest scattering angle."));
-            materialEditor.ShaderProperty(dustMaxStrength, new GUIContent("Maximum Strength", "Dust brightness when viewed close to the strongest scattering angle."));
+                materialEditor.ShaderProperty(dustMinStrength, new GUIContent("Minimum Strength", "Dust brightness when viewed away from the strongest scattering angle."));
+                materialEditor.ShaderProperty(dustMaxStrength, new GUIContent("Maximum Strength", "Dust brightness when viewed close to the strongest scattering angle."));
 
-            Space();
+                Space();
 
-            materialEditor.ShaderProperty(dustAngleStart, new GUIContent("Angle Start", "Sun/view alignment value where the dust starts becoming noticeably brighter."));
-            materialEditor.ShaderProperty(dustAngleEnd, new GUIContent("Angle End", "Sun/view alignment value where the dust reaches maximum angular strength."));
-            materialEditor.ShaderProperty(dustAnglePower, new GUIContent("Angle Curve", "Shapes how quickly dust brightness rises between Angle Start and Angle End."));
-        });
+                materialEditor.ShaderProperty(dustAngleStart, new GUIContent("Angle Start", "Sun/view alignment value where the dust starts becoming noticeably brighter."));
+                materialEditor.ShaderProperty(dustAngleEnd, new GUIContent("Angle End", "Sun/view alignment value where the dust reaches maximum angular strength."));
+                materialEditor.ShaderProperty(dustAnglePower, new GUIContent("Angle Curve", "Shapes how quickly dust brightness rises between Angle Start and Angle End."));
+            });
+        }
 
         DrawSection("Depth Occlusion", ref depthFoldout, () =>
         {
@@ -118,13 +127,13 @@ public sealed class ScreenSpaceGodRaysShaderGUI : ShaderGUI
         });
 
         EditorGUILayout.Space(8);
-
         DrawFooter(materialEditor);
     }
 
     private void FindProperties(MaterialProperty[] properties)
     {
         godRaySamples = FindProperty("_GodRaySamples", properties);
+        dustEnabled = FindProperty("_DustEnabled", properties);
 
         noise = FindProperty("_Noise", properties);
         noiseStrength = FindProperty("_NoiseStrength", properties);
@@ -154,18 +163,43 @@ public sealed class ScreenSpaceGodRaysShaderGUI : ShaderGUI
         depthSoftness = FindProperty("_DepthSoftness", properties);
     }
 
+    private void DrawDustToggle(MaterialEditor materialEditor)
+    {
+        EditorGUILayout.Space(3);
+
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+        bool enabled = dustEnabled.floatValue > 0.5f;
+
+        EditorGUI.showMixedValue = dustEnabled.hasMixedValue;
+        EditorGUI.BeginChangeCheck();
+
+        enabled = EditorGUILayout.Toggle(new GUIContent("Enable Dust", "Compiles world-space dust sampling into the god-ray pass. Disable this to remove all dust calculations and texture samples."), enabled);
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            materialEditor.RegisterPropertyChangeUndo("Toggle God Ray Dust");
+            dustEnabled.floatValue = enabled ? 1f : 0f;
+
+            foreach (Material material in materialEditor.targets)
+            {
+                SetKeyword(material, DustKeyword, enabled);
+                EditorUtility.SetDirty(material);
+            }
+        }
+
+        EditorGUI.showMixedValue = false;
+        EditorGUILayout.EndVertical();
+    }
+
     private void DrawSamples(MaterialEditor materialEditor)
     {
         int current = Mathf.Clamp(Mathf.RoundToInt(godRaySamples.floatValue), 0, SampleNames.Length - 1);
 
         EditorGUI.showMixedValue = godRaySamples.hasMixedValue;
-
         EditorGUI.BeginChangeCheck();
 
-        int selected = EditorGUILayout.Popup(
-            new GUIContent("Samples", "Number of ray-march samples. Higher values produce smoother rays but increase GPU cost."),
-            current,
-            SampleNames);
+        int selected = EditorGUILayout.Popup(new GUIContent("Samples", "Number of ray-march samples. Higher values produce smoother rays but increase GPU cost."), current, SampleNames);
 
         if (EditorGUI.EndChangeCheck())
         {
@@ -174,19 +208,38 @@ public sealed class ScreenSpaceGodRaysShaderGUI : ShaderGUI
 
             foreach (Material material in materialEditor.targets)
             {
-                for (int i = 0; i < SampleKeywords.Length; i++)
-                {
-                    if (i == selected)
-                        material.EnableKeyword(SampleKeywords[i]);
-                    else
-                        material.DisableKeyword(SampleKeywords[i]);
-                }
-
+                SetSampleKeyword(material, selected);
                 EditorUtility.SetDirty(material);
             }
         }
 
         EditorGUI.showMixedValue = false;
+    }
+
+    private void SyncKeywords(MaterialEditor materialEditor)
+    {
+        int selectedSamples = Mathf.Clamp(Mathf.RoundToInt(godRaySamples.floatValue), 0, SampleKeywords.Length - 1);
+        bool enableDust = dustEnabled.floatValue > 0.5f;
+
+        foreach (Material material in materialEditor.targets)
+        {
+            SetSampleKeyword(material, selectedSamples);
+            SetKeyword(material, DustKeyword, enableDust);
+        }
+    }
+
+    private static void SetSampleKeyword(Material material, int selected)
+    {
+        for (int i = 0; i < SampleKeywords.Length; i++)
+            SetKeyword(material, SampleKeywords[i], i == selected);
+    }
+
+    private static void SetKeyword(Material material, string keyword, bool enabled)
+    {
+        if (enabled)
+            material.EnableKeyword(keyword);
+        else
+            material.DisableKeyword(keyword);
     }
 
     private static void DrawTitle()
@@ -201,7 +254,6 @@ public sealed class ScreenSpaceGodRaysShaderGUI : ShaderGUI
 
         EditorGUILayout.LabelField("Screen Space God Rays", titleStyle);
         EditorGUILayout.LabelField("Ray marching, world-space dust and depth occlusion", EditorStyles.miniLabel);
-
         EditorGUILayout.Space(6);
     }
 

@@ -3,6 +3,7 @@ Shader "Hidden/ScreenSpaceGodRays"
     Properties
     {
         [HideInInspector] _GodRaySamples("God Ray Samples", Float) = 3
+        [HideInInspector] _DustEnabled("Enable Dust", Float) = 1
 
         _Noise("Noise", 2D) = "white" {}
         _NoiseStrength("Noise Strength", Range(0, 2)) = 1.0
@@ -37,6 +38,7 @@ Shader "Hidden/ScreenSpaceGodRays"
     #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
     #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
     #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
+    #include "Assets/Shaders/Common/GodRaysCommon.hlsl"
 
     #if defined(_GODRAYSAMPLES_8)
         #define GOD_RAY_SAMPLES 8
@@ -55,8 +57,11 @@ Shader "Hidden/ScreenSpaceGodRays"
     float _SunVisible;
 
     TEXTURE2D_X(_GodRaysTexture);
+
+#if defined(_DUST_ON)
     TEXTURE2D(_Noise);
     SAMPLER(sampler_Noise);
+#endif
 
     CBUFFER_START(UnityPerMaterial)
     float4 _Noise_ST;
@@ -110,18 +115,6 @@ Shader "Hidden/ScreenSpaceGodRays"
         return normalize(farPositionWS - _WorldSpaceCameraPos);
     }
 
-    half ComputeSchlickPhase(half cosTheta, half g)
-    {
-        half g2 = g * g;
-        half denom = 1.0 + g * cosTheta;
-        return (1.0 - g2) / (4.0 * 3.14159265 * denom * denom);
-    }
-
-    float Rand(float seed)
-    {
-        return frac(sin(seed * 12.9898) * 43758.5453);
-    }
-
     half4 GodRaysFragment(Varyings input) : SV_Target
     {
         UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
@@ -132,11 +125,7 @@ Shader "Hidden/ScreenSpaceGodRays"
         float2 uv = input.texcoord;
         float2 sunUV = _SunScreenPosition.xy;
         float2 directionToSun = sunUV - uv;
-
-        float2 aspectDirection = directionToSun;
-        aspectDirection.x *= _ScreenParams.x / _ScreenParams.y;
-
-        float distanceToSun = length(aspectDirection);
+        float distanceToSun = GodRaysAspectDistance(directionToSun, _ScreenParams.x / _ScreenParams.y);
 
         if (distanceToSun > _MaxRayDistance)
             return 0;
@@ -147,28 +136,30 @@ Shader "Hidden/ScreenSpaceGodRays"
         half accumulated = 0.0h;
         half illuminationDecay = 1.0h;
 
+    #if defined(_DUST_ON)
         float3 sunDirectionWS = normalize(_SunDirection.xyz);
+    #endif
 
         [unroll]
         for (int i = 0; i < GOD_RAY_SAMPLES; i++)
         {
             sampleUV += stepUV;
 
-            float2 lower = step(float2(0.0, 0.0), sampleUV);
-            float2 upper = step(sampleUV, float2(1.0, 1.0));
-            half inside = (half)(lower.x * lower.y * upper.x * upper.y);
-
+            half inside = GodRaysInsideScreen(sampleUV);
             float2 safeUV = saturate(sampleUV);
             half mask = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, safeUV).r;
 
             half rayContribution = mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef;
+            accumulated += rayContribution;
 
+        #if defined(_DUST_ON)
             float noiseStep = (i + 0.5) / GOD_RAY_SAMPLES;
-            float random = Rand(noiseStep);
+            float random = GodRaysRand(noiseStep);
 
-            float distance = _DustDistance * lerp(0.15, 1.0, random);
-            float noiseScale = _NoiseScale * lerp(0.01, 1.5, random);
-            float speedRandom = lerp(0.5, 1.5, random);
+            float distance;
+            float noiseScale;
+            float speedRandom;
+            GodRaysDustLayer(random, _DustDistance, _NoiseScale, distance, noiseScale, speedRandom);
 
             float3 viewDirectionWS = GetViewDirectionWS(safeUV);
             float3 dustPositionWS = _WorldSpaceCameraPos + viewDirectionWS * distance;
@@ -176,17 +167,16 @@ Shader "Hidden/ScreenSpaceGodRays"
             float2 noiseUV = dustPositionWS.xz * noiseScale;
             noiseUV += _Time.y * _NoiseSpeed.xy * speedRandom;
 
-            float angleAlignment = saturate(dot(viewDirectionWS, sunDirectionWS));
-            float angleStrength = smoothstep(_DustAngleStart, _DustAngleEnd, angleAlignment);
-            angleStrength = pow(angleStrength, _DustAnglePower);
-
-            float dustStrength = lerp(_DustMinStrength, _DustMaxStrength, angleStrength) * _NoiseStrength;
+            half dustStrength = GodRaysDustStrength(viewDirectionWS, sunDirectionWS, _DustMinStrength, _DustMaxStrength, _DustAngleStart, _DustAngleEnd, _DustAnglePower);
+            dustStrength *= _NoiseStrength;
 
             half noise = SAMPLE_TEXTURE2D(_Noise, sampler_Noise, noiseUV).r;
             half dust = smoothstep(_NoiseThreshold, _NoiseThreshold + _NoiseSoftness, noise);
             dust *= dustStrength * mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef;
 
-            accumulated += rayContribution + dust;
+            accumulated += dust;
+        #endif
+
             illuminationDecay *= _Decay;
         }
 
@@ -237,6 +227,7 @@ Shader "Hidden/ScreenSpaceGodRays"
             HLSLPROGRAM
             #pragma vertex Vert
             #pragma fragment GodRaysFragment
+            #pragma shader_feature_local_fragment _DUST_ON
             #pragma shader_feature_local_fragment _GODRAYSAMPLES_8 _GODRAYSAMPLES_12 _GODRAYSAMPLES_30 _GODRAYSAMPLES_60 _GODRAYSAMPLES_100
             ENDHLSL
         }
