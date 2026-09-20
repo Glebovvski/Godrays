@@ -2,6 +2,8 @@ Shader "Hidden/ScreenSpaceGodRays"
 {
     Properties
     {
+        [HideInInspector] _GodRaySamples("God Ray Samples", Float) = 3
+
         _Noise("Noise", 2D) = "white" {}
         _NoiseStrength("Noise Strength", Range(0, 2)) = 1.0
         _NoiseThreshold("Noise Threshold", Range(0, 1)) = 0.7
@@ -36,7 +38,17 @@ Shader "Hidden/ScreenSpaceGodRays"
     #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
     #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
 
-    #define GOD_RAY_SAMPLES 60
+    #if defined(_GODRAYSAMPLES_8)
+        #define GOD_RAY_SAMPLES 8
+    #elif defined(_GODRAYSAMPLES_12)
+        #define GOD_RAY_SAMPLES 12
+    #elif defined(_GODRAYSAMPLES_30)
+        #define GOD_RAY_SAMPLES 30
+    #elif defined(_GODRAYSAMPLES_100)
+        #define GOD_RAY_SAMPLES 100
+    #else
+        #define GOD_RAY_SAMPLES 60
+    #endif
 
     float4 _SunDirection;
     float4 _SunScreenPosition;
@@ -172,7 +184,7 @@ Shader "Hidden/ScreenSpaceGodRays"
 
             half noise = SAMPLE_TEXTURE2D(_Noise, sampler_Noise, noiseUV).r;
             half dust = smoothstep(_NoiseThreshold, _NoiseThreshold + _NoiseSoftness, noise);
-            dust *= dustStrength * mask * inside * illuminationDecay * _Weight*_DecaySunAngleKoef;
+            dust *= dustStrength * mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef;
 
             accumulated += rayContribution + dust;
             illuminationDecay *= _Decay;
@@ -225,6 +237,7 @@ Shader "Hidden/ScreenSpaceGodRays"
             HLSLPROGRAM
             #pragma vertex Vert
             #pragma fragment GodRaysFragment
+            #pragma shader_feature_local_fragment _GODRAYSAMPLES_8 _GODRAYSAMPLES_12 _GODRAYSAMPLES_30 _GODRAYSAMPLES_60 _GODRAYSAMPLES_100
             ENDHLSL
         }
 
