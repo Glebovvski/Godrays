@@ -225,8 +225,8 @@ Transform:
   m_GameObject: {fileID: 69238167}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.38, y: 2.1848, z: -10.34}
-  m_LocalScale: {x: 12.642482, y: 7.1383576, z: 1}
+  m_LocalPosition: {x: 2.38, y: 1.7175, z: -10.34}
+  m_LocalScale: {x: 12.642482, y: 8.072769, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -333,6 +333,7 @@ GameObject:
   - component: {fileID: 330585545}
   - component: {fileID: 330585544}
   - component: {fileID: 330585547}
+  - component: {fileID: 330585548}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -458,6 +459,21 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &330585548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87ecb352a1b87b340a0e1ef59378c1d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FreeCameraController
+  moveSpeed: 10
+  lookSensitivity: 2
+  fastMultiplier: 3
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -550,13 +566,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.2164053, y: -0.017379474, z: 0.0038529362, w: 0.97614133}
+  m_LocalRotation: {x: 0.07300994, y: -0.07868227, z: 0.0057780663, w: 0.9942059}
   m_LocalPosition: {x: 22.9, y: 8.2, z: -95.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 25, y: -2.04, z: 0}
+  m_LocalEulerAnglesHint: {x: 8.4, y: -9.05, z: 0}
 --- !u!114 &410087042
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -600,7 +616,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SunShaderController
   targetCamera: {fileID: 330585545}
   offscreenPadding: 0.15
-  maxSunAngle: 30
+  maxSunAngle: 31.1
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -982,8 +998,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: -0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 2.55, y: 2.55, z: 2.55}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
