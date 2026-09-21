@@ -38,7 +38,7 @@ Shader "Hidden/ScreenSpaceGodRaysBuiltIn"
     CGINCLUDE
 
     #include "UnityCG.cginc"
-    #include "Assets/Shaders/Common/GodRaysCommon.hlsl"
+    #include "Assets/Luminus Crepuscular/Shaders/Common/GodRaysCommon.hlsl"
 
     #if defined(_GODRAYSAMPLES_8)
         #define GOD_RAY_SAMPLES 8
@@ -228,6 +228,6 @@ Shader "Hidden/ScreenSpaceGodRaysBuiltIn"
         }
     }
 
-    CustomEditor "ScreenSpaceGodRaysShaderGUI"
+    CustomEditor "Luminus.Editor.ScreenSpaceGodRaysShaderGUI"
     Fallback Off
 }

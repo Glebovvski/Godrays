@@ -315,7 +315,7 @@ Transform:
   m_GameObject: {fileID: 243842046}
   serializedVersion: 2
   m_LocalRotation: {x: 1, y: 0, z: 0, w: 0}
-  m_LocalPosition: {x: 4.92058, y: 14.14, z: -15.6122}
+  m_LocalPosition: {x: 4.92058, y: 21.11, z: -15.6122}
   m_LocalScale: {x: 8.12, y: 8.12, z: 8.12}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -566,13 +566,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.07300994, y: -0.07868227, z: 0.0057780663, w: 0.9942059}
+  m_LocalRotation: {x: 0.26950574, y: -0.07595633, z: 0.021328906, w: 0.9597617}
   m_LocalPosition: {x: 22.9, y: 8.2, z: -95.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 8.4, y: -9.05, z: 0}
+  m_LocalEulerAnglesHint: {x: 31.37, y: -9.05, z: 0}
 --- !u!114 &410087042
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -617,7 +617,7 @@ MonoBehaviour:
   targetCamera: {fileID: 330585545}
   cullEffect: 0
   offscreenPadding: 100
-  maxSunAngle: 31.1
+  maxSunAngle: 60
 --- !u!1 &1693133652
 GameObject:
   m_ObjectHideFlags: 0

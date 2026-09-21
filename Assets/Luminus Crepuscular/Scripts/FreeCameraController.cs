@@ -1,71 +1,75 @@
 using UnityEngine;
 
-public class FreeCameraController : MonoBehaviour
+namespace Luminus.Runtime.Common
 {
-    [SerializeField] private float moveSpeed = 10f;
-    [SerializeField] private float lookSensitivity = 2f;
-    [SerializeField] private float fastMultiplier = 3f;
 
-    private float yaw;
-    private float pitch;
-
-    private void Start()
+    public class FreeCameraController : MonoBehaviour
     {
-        Vector3 angles = transform.eulerAngles;
-        yaw = angles.y;
-        pitch = angles.x;
+        [SerializeField] private float moveSpeed = 10f;
+        [SerializeField] private float lookSensitivity = 2f;
+        [SerializeField] private float fastMultiplier = 3f;
 
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
-    }
+        private float yaw;
+        private float pitch;
 
-    private void Update()
-    {
-        Look();
-        Move();
-
-        if (Input.GetKeyDown(KeyCode.Escape))
+        private void Start()
         {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
+            Vector3 angles = transform.eulerAngles;
+            yaw = angles.y;
+            pitch = angles.x;
 
-        if (Input.GetMouseButtonDown(0))
-        {
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
-    }
 
-    private void Look()
-    {
-        if (Cursor.lockState != CursorLockMode.Locked)
-            return;
+        private void Update()
+        {
+            Look();
+            Move();
 
-        yaw += Input.GetAxis("Mouse X") * lookSensitivity;
-        pitch -= Input.GetAxis("Mouse Y") * lookSensitivity;
-        pitch = Mathf.Clamp(pitch, -89f, 89f);
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
 
-        transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
-    }
+            if (Input.GetMouseButtonDown(0))
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
+        }
 
-    private void Move()
-    {
-        float speed = Input.GetKey(KeyCode.LeftShift) ? moveSpeed * fastMultiplier : moveSpeed;
+        private void Look()
+        {
+            if (Cursor.lockState != CursorLockMode.Locked)
+                return;
 
-        Vector3 input = new Vector3(
-            Input.GetAxisRaw("Horizontal"),
-            0f,
-            Input.GetAxisRaw("Vertical"));
+            yaw += Input.GetAxis("Mouse X") * lookSensitivity;
+            pitch -= Input.GetAxis("Mouse Y") * lookSensitivity;
+            pitch = Mathf.Clamp(pitch, -89f, 89f);
 
-        Vector3 direction = transform.right * input.x + transform.forward * input.z;
+            transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+        }
 
-        if (Input.GetKey(KeyCode.E))
-            direction += Vector3.up;
+        private void Move()
+        {
+            float speed = Input.GetKey(KeyCode.LeftShift) ? moveSpeed * fastMultiplier : moveSpeed;
 
-        if (Input.GetKey(KeyCode.Q))
-            direction += Vector3.down;
+            Vector3 input = new Vector3(
+                Input.GetAxisRaw("Horizontal"),
+                0f,
+                Input.GetAxisRaw("Vertical"));
 
-        transform.position += direction.normalized * speed * Time.deltaTime;
+            Vector3 direction = transform.right * input.x + transform.forward * input.z;
+
+            if (Input.GetKey(KeyCode.E))
+                direction += Vector3.up;
+
+            if (Input.GetKey(KeyCode.Q))
+                direction += Vector3.down;
+
+            transform.position += direction.normalized * speed * Time.deltaTime;
+        }
     }
 }

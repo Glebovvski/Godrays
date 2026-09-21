@@ -248,5 +248,5 @@ Shader "Hidden/ScreenSpaceGodRays"
         }
     }
 
-    CustomEditor "ScreenSpaceGodRaysShaderGUI"
+    CustomEditor "Luminus.Editor.ScreenSpaceGodRaysShaderGUI"
 }
