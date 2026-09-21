@@ -1,7 +1,9 @@
-Shader "Hidden/ScreenSpaceGodRays"
+Shader "Hidden/ScreenSpaceGodRaysBuiltIn"
 {
     Properties
     {
+        _MainTex("Source", 2D) = "white" {}
+
         [HideInInspector] _GodRaySamples("God Ray Samples", Float) = 3
         [HideInInspector] _DustEnabled("Enable Dust", Float) = 1
 
@@ -33,38 +35,33 @@ Shader "Hidden/ScreenSpaceGodRays"
         _DepthSoftness("Depth Softness", Range(0.00001, 0.05)) = 0.004
     }
 
-    HLSLINCLUDE
+    CGINCLUDE
 
-    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-    #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
-    #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
+    #include "UnityCG.cginc"
     #include "Assets/Shaders/Common/GodRaysCommon.hlsl"
 
-    // #if defined(_GODRAYSAMPLES_8)
+    #if defined(_GODRAYSAMPLES_8)
         #define GOD_RAY_SAMPLES 8
-    // #elif defined(_GODRAYSAMPLES_12)
-        // #define GOD_RAY_SAMPLES 12
-    // #elif defined(_GODRAYSAMPLES_30)
-        // #define GOD_RAY_SAMPLES 30
-    // #elif defined(_GODRAYSAMPLES_100)
-        // #define GOD_RAY_SAMPLES 100
-    // #else
-        // #define GOD_RAY_SAMPLES 60
-    // #endif
+    #elif defined(_GODRAYSAMPLES_12)
+        #define GOD_RAY_SAMPLES 12
+    #elif defined(_GODRAYSAMPLES_30)
+        #define GOD_RAY_SAMPLES 30
+    #elif defined(_GODRAYSAMPLES_100)
+        #define GOD_RAY_SAMPLES 100
+    #else
+        #define GOD_RAY_SAMPLES 60
+    #endif
 
     float4 _SunDirection;
     float4 _SunScreenPosition;
     float _SunVisible;
 
-    TEXTURE2D_X(_GodRaysTexture);
+    sampler2D _MainTex;
+    float4 _MainTex_TexelSize;
 
-#if defined(_DUST_ON)
-    TEXTURE2D(_Noise);
-    SAMPLER(sampler_Noise);
-#endif
+    sampler2D _CameraDepthTexture;
+    sampler2D _Noise;
 
-    CBUFFER_START(UnityPerMaterial)
-    float4 _Noise_ST;
     half _NoiseStrength;
     half _NoiseThreshold;
     half _NoiseSoftness;
@@ -90,39 +87,38 @@ Shader "Hidden/ScreenSpaceGodRays"
 
     float _DepthThreshold;
     float _DepthSoftness;
-    CBUFFER_END
 
-    half4 OcclusionMaskFragment(Varyings input) : SV_Target
+    float2 GetDepthUV(float2 uv)
     {
-        UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+    #if UNITY_UV_STARTS_AT_TOP
+        if (_MainTex_TexelSize.y < 0)
+            uv.y = 1.0 - uv.y;
+    #endif
+        return uv;
+    }
 
-        float rawDepth = SampleSceneDepth(input.texcoord);
-        float linearDepth = Linear01Depth(rawDepth, _ZBufferParams);
+    float3 GetViewDirectionWS(float2 uv)
+    {
+        float2 ndc = uv * 2.0 - 1.0;
+        float3 directionVS = float3(ndc.x / unity_CameraProjection._m00, ndc.y / unity_CameraProjection._m11, -1.0);
+        return normalize(mul((float3x3)unity_CameraToWorld, normalize(directionVS)));
+    }
+
+    fixed4 OcclusionMaskFragment(v2f_img input) : SV_Target
+    {
+        float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, GetDepthUV(input.uv));
+        float linearDepth = Linear01Depth(rawDepth);
         half mask = smoothstep(_DepthThreshold, _DepthThreshold + _DepthSoftness, linearDepth);
 
         return half4(mask, mask, mask, 1.0h);
     }
 
-    float3 GetViewDirectionWS(float2 uv)
+    fixed4 GodRaysFragment(v2f_img input) : SV_Target
     {
-    #if UNITY_REVERSED_Z
-        float rawDepth = 0.0;
-    #else
-        float rawDepth = 1.0;
-    #endif
-
-        float3 farPositionWS = ComputeWorldSpacePosition(uv, rawDepth, UNITY_MATRIX_I_VP);
-        return normalize(farPositionWS - _WorldSpaceCameraPos);
-    }
-
-    half4 GodRaysFragment(Varyings input) : SV_Target
-    {
-        UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-
         if (_SunVisible < 0.5)
             return 0;
 
-        float2 uv = input.texcoord;
+        float2 uv = input.uv;
         float2 sunUV = _SunScreenPosition.xy;
         float2 directionToSun = sunUV - uv;
         float distanceToSun = GodRaysAspectDistance(directionToSun, _ScreenParams.x / _ScreenParams.y);
@@ -140,21 +136,20 @@ Shader "Hidden/ScreenSpaceGodRays"
         float3 sunDirectionWS = normalize(_SunDirection.xyz);
     #endif
 
-        [unroll]
+        [loop]
         for (int i = 0; i < GOD_RAY_SAMPLES; i++)
         {
             sampleUV += stepUV;
 
             half inside = GodRaysInsideScreen(sampleUV);
             float2 safeUV = saturate(sampleUV);
-            half mask = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, safeUV).r;
 
-            half rayContribution = mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef;
-            accumulated += rayContribution;
+            half mask = tex2D(_MainTex, safeUV).r;
+
+            accumulated += mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef;
 
         #if defined(_DUST_ON)
-            float noiseStep = (i + 0.5) / GOD_RAY_SAMPLES;
-            float random = GodRaysRand(noiseStep);
+            float random = GodRaysRand((i + 0.5) / GOD_RAY_SAMPLES);
 
             float distance;
             float noiseScale;
@@ -167,13 +162,11 @@ Shader "Hidden/ScreenSpaceGodRays"
             float2 noiseUV = dustPositionWS.xz * noiseScale;
             noiseUV += _Time.y * _NoiseSpeed.xy * speedRandom;
 
-            half dustStrength = GodRaysDustStrength(viewDirectionWS, sunDirectionWS, _DustMinStrength, _DustMaxStrength, _DustAngleStart, _DustAngleEnd, _DustAnglePower);
-            dustStrength *= _NoiseStrength;
-
-            half noise = SAMPLE_TEXTURE2D(_Noise, sampler_Noise, noiseUV).r;
+            half dustStrength = GodRaysDustStrength(viewDirectionWS, sunDirectionWS, _DustMinStrength, _DustMaxStrength, _DustAngleStart, _DustAngleEnd, _DustAnglePower) * _NoiseStrength;
+            half noise = tex2D(_Noise, noiseUV).r;
             half dust = smoothstep(_NoiseThreshold, _NoiseThreshold + _NoiseSoftness, noise);
-            dust *= dustStrength * mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef;
 
+            dust *= dustStrength * mask * inside * illuminationDecay * _Weight * _DecaySunAngleKoef;
             accumulated += dust;
         #endif
 
@@ -184,69 +177,57 @@ Shader "Hidden/ScreenSpaceGodRays"
         return half4(rays, rays, rays, 1.0h);
     }
 
-    half4 CompositeFragment(Varyings input) : SV_Target
+    fixed4 CompositeFragment(v2f_img input) : SV_Target
     {
-        UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-
-        float2 uv = input.texcoord;
-        half3 sceneColor = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, uv).rgb;
-        half rays = SAMPLE_TEXTURE2D_X(_GodRaysTexture, sampler_LinearClamp, uv).r;
-
-        sceneColor += rays * _RayColor.rgb * _Intensity * _SunVisible;
-        return half4(sceneColor, 1.0h);
+        half rays = tex2D(_MainTex, input.uv).r;
+        return half4(rays * _RayColor.rgb * _Intensity * _SunVisible, 0.0h);
     }
 
-    ENDHLSL
+    ENDCG
 
     SubShader
     {
-        PackageRequirements
-        {
-            "com.unity.render-pipelines.universal": "12.0.0"
-        }
-
-        Tags
-        {
-            "RenderPipeline" = "UniversalPipeline"
-            "RenderType" = "Opaque"
-        }
-
+        Cull Off
         ZWrite Off
         ZTest Always
-        Cull Off
 
         Pass
         {
             Name "Occlusion Mask"
 
-            HLSLPROGRAM
-            #pragma vertex Vert
+            CGPROGRAM
+            #pragma target 3.0
+            #pragma vertex vert_img
             #pragma fragment OcclusionMaskFragment
-            ENDHLSL
+            ENDCG
         }
 
         Pass
         {
             Name "God Rays"
 
-            HLSLPROGRAM
-            #pragma vertex Vert
+            CGPROGRAM
+            #pragma target 3.0
+            #pragma vertex vert_img
             #pragma fragment GodRaysFragment
-            #pragma shader_feature_local_fragment _DUST_ON
-            #pragma shader_feature_local_fragment _GODRAYSAMPLES_8 _GODRAYSAMPLES_12 _GODRAYSAMPLES_30 _GODRAYSAMPLES_60 _GODRAYSAMPLES_100
-            ENDHLSL
+            #pragma shader_feature_local _DUST_ON
+            #pragma shader_feature_local _GODRAYSAMPLES_8 _GODRAYSAMPLES_12 _GODRAYSAMPLES_30 _GODRAYSAMPLES_60 _GODRAYSAMPLES_100
+            ENDCG
         }
 
         Pass
         {
             Name "Composite"
+            Blend One One
 
-            HLSLPROGRAM
-            #pragma vertex Vert
+            CGPROGRAM
+            #pragma target 3.0
+            #pragma vertex vert_img
             #pragma fragment CompositeFragment
-            ENDHLSL
+            ENDCG
         }
     }
 
     CustomEditor "ScreenSpaceGodRaysShaderGUI"
+    Fallback Off
 }
