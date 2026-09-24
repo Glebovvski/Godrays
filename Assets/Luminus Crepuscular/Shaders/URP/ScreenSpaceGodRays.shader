@@ -55,6 +55,7 @@ Shader "Hidden/ScreenSpaceGodRays"
     float4 _SunDirection;
     float4 _SunScreenPosition;
     float _SunVisible;
+    half _DecaySunAngleKoef;
 
     TEXTURE2D_X(_GodRaysTexture);
 
@@ -83,7 +84,6 @@ Shader "Hidden/ScreenSpaceGodRays"
     half _Intensity;
     half _Density;
     half _Decay;
-    half _DecaySunAngleKoef;
     half _Weight;
     half _Exposure;
     half _MaxRayDistance;
